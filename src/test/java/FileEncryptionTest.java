@@ -1,11 +1,12 @@
-import junit.framework.Assert;
+import com.github.lemniscate.crypto.RsaUtil;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.interfaces.RSAPublicKey;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Create some keys!
@@ -17,40 +18,26 @@ import static org.junit.Assert.*;
  */
 public class FileEncryptionTest {
 
+    private File idRsa;
+    private RsaUtil util = new RsaUtil();
+
+    @Before
+    public void init(){
+        String home = System.getProperty("user.home");
+        idRsa = new File(home, "/.ssh/id_rsa");
+        assertTrue(idRsa.exists());
+    }
+
     @Test
-    public void foo() throws Exception{
-        FileEncryption secure = new FileEncryption();
+    public void fromIdRsa() throws Exception {
+        String data = util.loadStrippedDataFromFile(idRsa);
+        RSAPrivateCrtKey priv = util.generatePrivateKey(data);
+        RSAPublicKey pub = util.generatePublicKey(priv);
 
-        File encryptedKeyFile = file("private.pem");
-        File publicKeyFile = file("public.der");
-        File privateKeyFile = file("private.der");
-        File fileToEncrypt = file("message.txt");
-
-        File encryptedFile = new File("message.txt.enc");
-        if( !encryptedFile.exists() ){
-            encryptedFile.createNewFile();
-        }
-
-        System.out.println("Encrypting to " + encryptedFile);
-        File decryptedFile = File.createTempFile("decrypted", ".txt");
-        System.out.println("Decrypting to " + decryptedFile);
-
-
-        // to encrypt a file
-        secure.makeKey();
-        secure.saveKey(encryptedKeyFile, publicKeyFile);
-        secure.encrypt(fileToEncrypt, encryptedFile);
-
-        // to decrypt it again
-        secure.loadKey(encryptedKeyFile, privateKeyFile);
-        secure.decrypt(encryptedFile, decryptedFile);
+        String src = "Hello world";
+        String encrypted = util.encrypt(src, pub);
+        String decrypted = util.decrypt(encrypted, priv);
+        assertTrue( src.equals(decrypted) );
     }
 
-    private File file(String path) throws URISyntaxException {
-        URL url = getClass().getResource(path);
-        assertNotNull("Could not load path " + path, url);
-        File file = new File(url.toURI());
-        assertNotNull("Could not create file " + path, file);
-        return file;
-    }
 }
